@@ -74,7 +74,7 @@ void AUDiscordManager::execupdateAcitivty(FFrame& Stack, RESULT_DECL)
 
 	discord::Activity activity{};
 
-	if (state) activity.SetState(_details);
+	if (state) activity.SetState(_state);
 	if (details) activity.SetDetails(_state);
 	if (startTime) activity.GetTimestamps().SetStart(startTime);
 
