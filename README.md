@@ -3,6 +3,8 @@
 
 Implementation of the Discord GameSDK for UnrealTournament 99 using native C++
 
+![example](https://github.com/BrutalBunny/UDiscordManager/blob/main/example.PNG?raw?true)
+
 
 ## Important notes
 
@@ -52,6 +54,3 @@ Contributions are always welcome!
 See `contributing.md` for ways to get started.
 
 Please adhere to this project's `code of conduct`.
-
-
-![example](https://github.com/BrutalBunny/UDiscordManager/blob/main/example.PNG?raw?true)
