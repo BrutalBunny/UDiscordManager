@@ -1,0 +1,2 @@
+# UDiscordManager
+UnrealTournament Discord Manager
