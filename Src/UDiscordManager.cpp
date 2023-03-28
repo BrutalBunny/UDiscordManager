@@ -17,29 +17,31 @@ discord::Core* core{};
 void AUDiscordManager::execinitDiscord(FFrame& Stack, RESULT_DECL)
 {
 	guard(AUDiscordManager::execinitDiscord);
+	P_FINISH; // Call even we don't pass any parameters.
 
-	// Parse the UnrealScript parameters.
-	P_GET_STR(appId);
-	P_FINISH; // You must call me when finished parsing all parameters.
+	FString FilePath = appBaseDir();
+	FilePath += TEXT("UDiscordManager.ini");
 
-	char* _appId = TCHAR_TO_ANSI(*appId); //Convert from some FString to char*
-	int64_t _clientId = std::strtoll(_appId, nullptr, 10);
+	FString _appId = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("appId"), *FilePath);
+	discord::ClientId appId = _atoi64(TCHAR_TO_ANSI(*_appId));
 
-	discord::Result result = discord::Core::Create(_clientId, DiscordCreateFlags_NoRequireDiscord, &core);
-	if (result != discord::Result::Ok) {
-		FString Msg = FString::Printf(TEXT("Discord initialize failed with result: result=%d"), result);
-		this->eventBroadcastMessage(Msg, 0, NAME_None);
-
+	if (appId == discord::ClientId()) {
+		GLog->Log(TEXT("No config found. Make sure you have UDiscordManager.ini -> [UDiscordManager] appId=YourAppId"));
 		AUDiscordManager::bInitialized = false;
 	}
 	else {
-		FString Msg2 = FString::Printf(TEXT("Discord initialize success with appId: appId=%d"), appId);
-		this->eventBroadcastMessage(Msg2, 0, NAME_None);
-
-		AUDiscordManager::bInitialized = true;
+		discord::Result result = discord::Core::Create(appId, DiscordCreateFlags_NoRequireDiscord, &core);
+		if (result != discord::Result::Ok) {
+			GLog->Logf(TEXT("Discord initialize failed with result: result=%d"), result);
+			AUDiscordManager::bInitialized = false;
+		}
+		else {
+			GLog->Log(TEXT("Discord initialize success"));
+			AUDiscordManager::bInitialized = true;
+		}
 	}
 
-	*(UBOOL*) Result = AUDiscordManager::bInitialized;
+	*(UBOOL*)Result = AUDiscordManager::bInitialized;
 
 	unguard;
 }
@@ -68,14 +70,16 @@ void AUDiscordManager::execupdateAcitivty(FFrame& Stack, RESULT_DECL)
 	char* _state = TCHAR_TO_ANSI(*state); //Convert from some FString to char*
 
 	if (!AUDiscordManager::bInitialized) {
-		*(UBOOL*) Result = false;
+		GLog->Log(TEXT("Discord is not initialized"));
+
+		*(UBOOL*)Result = false;
 		return;
 	}
 
 	discord::Activity activity{};
 
+	if (details) activity.SetDetails(_details);
 	if (state) activity.SetState(_state);
-	if (details) activity.SetDetails(_state);
 	if (startTime) activity.GetTimestamps().SetStart(startTime);
 
 	activity.GetAssets().SetLargeImage("ut-logo");
@@ -85,19 +89,14 @@ void AUDiscordManager::execupdateAcitivty(FFrame& Stack, RESULT_DECL)
 
 	core->ActivityManager().UpdateActivity(activity, [this](discord::Result result) {
 		if (result != discord::Result::Ok) {
-			FString Msg = FString::Printf(TEXT("Discord update activity failed with result: result=%d"), result);
-			this->eventBroadcastMessage(Msg, 0, NAME_None);
+			GLog->Logf(TEXT("Discord update activity failed with result: result=%d"), result);
 		}
 		else {
-			FString Msg = FString::Printf(TEXT("Discord update activity success"));
-			this->eventBroadcastMessage(Msg, 0, NAME_None);
+			GLog->Logf(TEXT("Discord update activity success"));
 		}
 	});
 
-	//Run callbacks everytime we do some changes
-	core->RunCallbacks();
-
-	*(UBOOL*) Result = true;
+	*(UBOOL*)Result = true;
 
 	unguard;
 }
@@ -112,28 +111,53 @@ IMPLEMENT_FUNCTION(AUDiscordManager, -1, execupdateAcitivty);
 void AUDiscordManager::execclearActivity(FFrame& Stack, RESULT_DECL)
 {
 	guard(AUDiscordManager::execupdateAcitivty);
+	P_FINISH; // Call even we don't pass any parameters.
 
 	if (!AUDiscordManager::bInitialized) {
-		*(UBOOL* )Result = false;
+		GLog->Log(TEXT("Discord is not initialized"));
+
+		*(UBOOL*)Result = false;
 		return;
 	}
 
 	core->ActivityManager().ClearActivity([this](discord::Result result) {
 		if (result != discord::Result::Ok) {
-			FString Msg = FString::Printf(TEXT("Discord clear activity failed with result: result=%d"), result);
-			this->eventBroadcastMessage(Msg, 0, NAME_None);
+			GLog->Logf(TEXT("Discord clear activity failed with result: result=%d"), result);
 		}
 		else {
-			FString Msg = FString::Printf(TEXT("Discord clear activity success"));
-			this->eventBroadcastMessage(Msg, 0, NAME_None);
+			GLog->Log(TEXT("Discord clear activity success"));
 		}
 	});
-
-	//Run callbacks everytime we do some changes
-	core->RunCallbacks();
 
 	*(UBOOL*)Result = true;
 
 	unguard;
 }
 IMPLEMENT_FUNCTION(AUDiscordManager, -1, execclearActivity);
+
+/*******************************************************************************
+ *
+ * @RETURN	bool
+ *
+ *******************************************************************************
+ */
+void AUDiscordManager::execrunCallbacks(FFrame& Stack, RESULT_DECL)
+{
+	guard(AUDiscordManager::execrunCallbacks);
+	P_FINISH; // Call even we don't pass any parameters.
+
+	if (!AUDiscordManager::bInitialized) {
+		GLog->Log(TEXT("Discord is not initialized"));
+
+		*(UBOOL*)Result = false;
+		return;
+	}
+
+	//Run callbacks everytime we do some changes. You should call to this method on a Tick() or Timer() function
+	core->RunCallbacks();
+
+	*(UBOOL*)Result = true;
+
+	unguard;
+}
+IMPLEMENT_FUNCTION(AUDiscordManager, -1, execrunCallbacks);

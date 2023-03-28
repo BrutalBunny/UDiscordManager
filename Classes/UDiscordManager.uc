@@ -1,22 +1,32 @@
 class UDiscordManager extends Actor
-	native;
+	native
+	noexport;
 
 var bool bInitialized;
 
-native function bool initDiscord(string appId);
+native function bool initDiscord();
 native function bool updateAcitivty(string details, string state, int startTime);
 native function bool clearActivity();
+native function bool runCallbacks();
 
 function PostBeginPlay()
 {
     if( bInitialized ) return;
 
-	bInitialized = initDiscord("1088916577560297664");
-	SetTimer(5.0, true);
+    initialize();
+	SetTimer(1.0, true);
 }
 
 function Timer()
 {
-    if( !bInitialized ) initDiscord("1088916577560297664");
-    updateAcitivty("Server Name Pog", "Map Name Pog", 0);
+    if( !bInitialized ) initialize();
+    runCallbacks();
+}
+
+function initialize()
+{
+    if( bInitialized ) return;
+
+	bInitialized = initDiscord();
+	updateAcitivty("Server Name Pog", "Map Name Pog", 0);
 }

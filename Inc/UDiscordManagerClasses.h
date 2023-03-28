@@ -24,6 +24,7 @@ class UDISCORDMANAGER_API AUDiscordManager : public AActor
 {
 public:
     BITFIELD bInitialized : 1 GCC_PACK(INT_ALIGNMENT);
+    DECLARE_FUNCTION(execrunCallbacks);
     DECLARE_FUNCTION(execupdateAcitivty);
     DECLARE_FUNCTION(execclearActivity);
     DECLARE_FUNCTION(execinitDiscord);
@@ -36,6 +37,7 @@ public:
 
 #endif
 
+AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execrunCallbacks);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execupdateAcitivty);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execclearActivity);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execinitDiscord);
