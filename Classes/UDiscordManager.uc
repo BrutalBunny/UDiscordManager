@@ -6,7 +6,6 @@ var bool bInitialized;
 
 native function bool updateAcitivty(string details, string state, int startTime);
 native function bool clearActivity();
-native function bool openGuildInvite(string guildId);
 
 function PostBeginPlay()
 {
