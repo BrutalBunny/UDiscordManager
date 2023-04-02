@@ -42,6 +42,7 @@ Sadly no documentation for UT99 :') but here are some links of interest
 
 * [Hello World project](https://www.oldunreal.com/phpBB3/viewtopic.php?f=37&t=3938)
 * [Sample Native package](https://github.com/FaultyRAM/Ut99PubSrc/tree/master/SampleNativePackage)
+* [Some Native Guide](http://web.archive.org/web/20010412044804/http://www.sleepwalkertc.com/members/blitz/native/native.html)
 
 ## Authors
 
