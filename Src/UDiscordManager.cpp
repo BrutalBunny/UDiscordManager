@@ -1,57 +1,173 @@
-#include "UDiscordManager.h"
+#include <stdexcept>
 #include <cstdlib>
+#include <ctime>
+
+#include "UDiscordManager.h"
 
 IMPLEMENT_PACKAGE(UDiscordManager);
 IMPLEMENT_CLASS(AUDiscordManager);
 
-/* Global variable */
-discord::Core* core{};
-
-/*******************************************************************************
- *
- * @PARAM	appId           String Discord Client Application ID
- * @RETURN	bool
- *
- *******************************************************************************
- */
-void AUDiscordManager::execinitDiscord(FFrame& Stack, RESULT_DECL)
+class UDiscordManagerProperties
 {
-	guard(AUDiscordManager::execinitDiscord);
-	P_FINISH; // Call even we don't pass any parameters.
+public:
+	struct ActivityProperties
+	{
+		FString details;
+		FString state;
+		int64_t startTime;
 
-	FString FilePath = appBaseDir();
-	FilePath += TEXT("UDiscordManager.ini");
+		FString largeImage;
+		FString largeImageText;
+		FString smallImage;
+		FString smallImageText;
+	};
+	ActivityProperties activityProps{};
 
-	FString _appId = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("appId"), *FilePath);
-	discord::ClientId appId = _atoi64(TCHAR_TO_ANSI(*_appId));
+	discord::Core* core{};
+	discord::Activity activity{};
 
-	if (appId == discord::ClientId()) {
-		GLog->Log(TEXT("No config found. Make sure you have UDiscordManager.ini -> [UDiscordManager] appId=YourAppId"));
-		AUDiscordManager::bInitialized = false;
+	discord::ClientId getAppId()
+	{
+		if (this->appId == discord::ClientId()) {
+			FString FilePath = appBaseDir();
+			FilePath += TEXT("UDiscordManager.ini");
+
+			FString _appId = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("appId"), *FilePath);
+			this->appId = _atoi64(TCHAR_TO_ANSI(*_appId));
+		}
+
+		return this->appId;
 	}
-	else {
-		discord::Result result = discord::Core::Create(appId, DiscordCreateFlags_NoRequireDiscord, &core);
+private:
+	discord::ClientId appId;
+};
+UDiscordManagerProperties DiscordProps;
+
+
+void AUDiscordManager::_initDiscord()
+{
+	discord::Result result = discord::Core::Create(DiscordProps.getAppId(), DiscordCreateFlags_NoRequireDiscord, &DiscordProps.core);
+	if (result != discord::Result::Ok) {
+		GLog->Logf(TEXT("initDiscord: failed with result: result=%d"), result);
+		this->bInitialized = false;
+		return;
+	}
+
+	GLog->Log(TEXT("initDiscord: success"));
+	this->bInitialized = true;
+
+	_initActivityManager();
+}
+
+void AUDiscordManager::_initActivityManager()
+{
+	discord::Activity activity = DiscordProps.activity;
+	auto& activityProps = DiscordProps.activityProps;
+
+	if (activityProps.details.Len() == 0) {
+		activityProps.details = Level->Game->GameReplicationInfo->ServerName;
+	}
+	const ANSICHAR* DetailsANSI = TCHAR_TO_ANSI(*activityProps.details);
+	activity.SetDetails(DetailsANSI);
+
+	if (activityProps.state.Len() == 0) {
+		activityProps.state = Level->Game->GameReplicationInfo->GameName;
+	}
+	const ANSICHAR* StateANSI = TCHAR_TO_ANSI(*activityProps.state);
+	activity.SetState(StateANSI);
+
+	if (activityProps.startTime == 0) {
+		activityProps.startTime = std::time(nullptr);
+	}
+	activity.GetTimestamps().SetStart(activityProps.startTime);
+
+	// Assets included in https://discord.com/developers/applications/ 'Rich Presence section'
+	if (activityProps.largeImage.Len() == 0) {
+		FString FilePath = appBaseDir();
+		FilePath += TEXT("UDiscordManager.ini");
+
+		activityProps.largeImage = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("Assets_largeImage"), *FilePath);
+	}
+	const ANSICHAR* LargeImageANSI = TCHAR_TO_ANSI(*activityProps.largeImage);
+	activity.GetAssets().SetLargeImage(LargeImageANSI);
+
+	if (activityProps.largeImageText.Len() == 0) {
+		FString FilePath = appBaseDir();
+		FilePath += TEXT("UDiscordManager.ini");
+
+		activityProps.largeImageText = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("Assets_largeImageText"), *FilePath);
+	}
+	const ANSICHAR* LargeImageTextANSI = TCHAR_TO_ANSI(*activityProps.largeImageText);
+	activity.GetAssets().SetLargeText(LargeImageTextANSI);
+
+	if (activityProps.smallImage.Len() == 0) {
+		FString FilePath = appBaseDir();
+		FilePath += TEXT("UDiscordManager.ini");
+
+		activityProps.smallImage = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("Assets_smallImage"), *FilePath);
+	}
+	const ANSICHAR* SmallImageANSI = TCHAR_TO_ANSI(*activityProps.smallImage);
+	activity.GetAssets().SetSmallImage(SmallImageANSI);
+
+	if (activityProps.smallImageText.Len() == 0) {
+		FString FilePath = appBaseDir();
+		FilePath += TEXT("UDiscordManager.ini");
+
+		activityProps.smallImageText = GConfig->GetStr(TEXT("UDiscordManager"), TEXT("Assets_smallImageText"), *FilePath);
+	}
+	const ANSICHAR* SmallImageTextANSI = TCHAR_TO_ANSI(*activityProps.smallImageText);
+	activity.GetAssets().SetSmallText(SmallImageTextANSI);
+
+	DiscordProps.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
 		if (result != discord::Result::Ok) {
-			GLog->Logf(TEXT("Discord initialize failed with result: result=%d"), result);
-			AUDiscordManager::bInitialized = false;
+			GLog->Logf(TEXT("initActivityManager: failed with result: result=%d"), result);
 		}
 		else {
-			GLog->Log(TEXT("Discord initialize success"));
-			AUDiscordManager::bInitialized = true;
+			GLog->Logf(TEXT("initActivityManager: success"));
 		}
+	});
+}
+
+void AUDiscordManager::_runCallbacks()
+{
+	if (!this->bInitialized) {
+		GLog->Log(TEXT("runCallbacks: Discord is not initialized"));
+		return;
 	}
 
-	*(UBOOL*)Result = AUDiscordManager::bInitialized;
-
-	unguard;
+	// Run callbacks everytime we do some changes. You should call to this method on a Tick() or Timer() function
+	discord::Result result = DiscordProps.core->RunCallbacks();
+	if (result != discord::Result::Ok) {
+		GLog->Logf(TEXT("runCallbacks: failed with result: result=%d"), result);
+		this->bInitialized = false;
+	}
 }
-IMPLEMENT_FUNCTION(AUDiscordManager, -1, execinitDiscord);
+
+
+AUDiscordManager::AUDiscordManager()
+{
+	this->bInitialized = false;
+}
+
+UBOOL AUDiscordManager::Tick(float DeltaTime, ELevelTick TickType)
+{
+	Super::Tick(DeltaTime, TickType);
+
+	if (!this->bInitialized) {
+		this->_initDiscord();
+	}
+	
+	this->_runCallbacks();
+
+	return true;
+}
+
 
 /*******************************************************************************
  *
  * @PARAM	details			FString details to be displayed (Ex: Playing Solo)
- * @PARAM	state				FString state to be displayed (Ex: In Game)
- * @PARAM	startTime         Integer unix timestamp to be displayed. This parameter will display the elapsed time in your activity
+ * @PARAM	state			FString state to be displayed (Ex: In Game)
+ * @PARAM	startTime		Integer unix timestamp to be displayed. This parameter will display the elapsed time in your activity
  * @RETURN	bool
  *
  *******************************************************************************
@@ -64,35 +180,45 @@ void AUDiscordManager::execupdateAcitivty(FFrame& Stack, RESULT_DECL)
 	P_GET_STR(details);
 	P_GET_STR(state);
 	P_GET_INT(startTime);
-	P_FINISH; // You must call me when finished parsing all parameters.
+	P_FINISH;
 
-	char* _details = TCHAR_TO_ANSI(*details); //Convert from some FString to char*
-	char* _state = TCHAR_TO_ANSI(*state); //Convert from some FString to char*
+	auto& activityProps = DiscordProps.activityProps;
 
-	if (!AUDiscordManager::bInitialized) {
+	if (details.Len() > 0) {
+		activityProps.details = details;
+	}
+
+	if (state.Len() > 0) {
+		activityProps.state = state;
+	}
+
+	if (startTime != 0) {
+		activityProps.startTime = startTime;
+	}
+
+	if (!this->bInitialized) {
 		GLog->Log(TEXT("Discord is not initialized"));
 
 		*(UBOOL*)Result = false;
 		return;
 	}
 
-	discord::Activity activity{};
+	discord::Activity activity = DiscordProps.activity;
 
-	if (details) activity.SetDetails(_details);
-	if (state) activity.SetState(_state);
-	if (startTime) activity.GetTimestamps().SetStart(startTime);
+	const ANSICHAR* DetailsANSI = TCHAR_TO_ANSI(*activityProps.details);
+	activity.SetDetails(DetailsANSI);
 
-	activity.GetAssets().SetLargeImage("ut-logo");
-	activity.GetAssets().SetLargeText("Unreal Tournament 99");
-	activity.GetAssets().SetSmallImage("bunny-logo-mini");
-	activity.GetAssets().SetSmallText("BunnyTrack");
+	const ANSICHAR* StateANSI = TCHAR_TO_ANSI(*activityProps.state);
+	activity.SetState(StateANSI);
 
-	core->ActivityManager().UpdateActivity(activity, [this](discord::Result result) {
+	activity.GetTimestamps().SetStart(activityProps.startTime);
+
+	DiscordProps.core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
 		if (result != discord::Result::Ok) {
-			GLog->Logf(TEXT("Discord update activity failed with result: result=%d"), result);
+			GLog->Logf(TEXT("execupdateAcitivty: failed with result: result=%d"), result);
 		}
 		else {
-			GLog->Logf(TEXT("Discord update activity success"));
+			GLog->Logf(TEXT("execupdateAcitivty: success"));
 		}
 	});
 
@@ -111,21 +237,21 @@ IMPLEMENT_FUNCTION(AUDiscordManager, -1, execupdateAcitivty);
 void AUDiscordManager::execclearActivity(FFrame& Stack, RESULT_DECL)
 {
 	guard(AUDiscordManager::execupdateAcitivty);
-	P_FINISH; // Call even we don't pass any parameters.
+	P_FINISH;
 
-	if (!AUDiscordManager::bInitialized) {
-		GLog->Log(TEXT("Discord is not initialized"));
+	if (!this->bInitialized) {
+		GLog->Log(TEXT("execclearActivity: Discord is not initialized"));
 
 		*(UBOOL*)Result = false;
 		return;
 	}
 
-	core->ActivityManager().ClearActivity([this](discord::Result result) {
+	DiscordProps.core->ActivityManager().ClearActivity([](discord::Result result) {
 		if (result != discord::Result::Ok) {
-			GLog->Logf(TEXT("Discord clear activity failed with result: result=%d"), result);
+			GLog->Logf(TEXT("execclearActivity: failed with result: result=%d"), result);
 		}
 		else {
-			GLog->Log(TEXT("Discord clear activity success"));
+			GLog->Log(TEXT("execclearActivity: success"));
 		}
 	});
 
@@ -134,30 +260,3 @@ void AUDiscordManager::execclearActivity(FFrame& Stack, RESULT_DECL)
 	unguard;
 }
 IMPLEMENT_FUNCTION(AUDiscordManager, -1, execclearActivity);
-
-/*******************************************************************************
- *
- * @RETURN	bool
- *
- *******************************************************************************
- */
-void AUDiscordManager::execrunCallbacks(FFrame& Stack, RESULT_DECL)
-{
-	guard(AUDiscordManager::execrunCallbacks);
-	P_FINISH; // Call even we don't pass any parameters.
-
-	if (!AUDiscordManager::bInitialized) {
-		GLog->Log(TEXT("Discord is not initialized"));
-
-		*(UBOOL*)Result = false;
-		return;
-	}
-
-	//Run callbacks everytime we do some changes. You should call to this method on a Tick() or Timer() function
-	core->RunCallbacks();
-
-	*(UBOOL*)Result = true;
-
-	unguard;
-}
-IMPLEMENT_FUNCTION(AUDiscordManager, -1, execrunCallbacks);

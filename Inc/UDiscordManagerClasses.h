@@ -16,31 +16,28 @@
 #define AUTOGENERATE_FUNCTION(cls,idx,name)
 #endif
 
-
 #ifndef NAMES_ONLY
-
-
 class UDISCORDMANAGER_API AUDiscordManager : public AActor
 {
 public:
     BITFIELD bInitialized : 1 GCC_PACK(INT_ALIGNMENT);
-    DECLARE_FUNCTION(execrunCallbacks);
     DECLARE_FUNCTION(execupdateAcitivty);
     DECLARE_FUNCTION(execclearActivity);
-    DECLARE_FUNCTION(execinitDiscord);
     DECLARE_CLASS(AUDiscordManager, AActor, 0, UDiscordManager);
-    AUDiscordManager()
-    {
-        AUDiscordManager::bInitialized = false;
-    };
-};
+    AUDiscordManager();
 
+protected:
+    virtual UBOOL Tick(float DeltaTime, ELevelTick TickType) override;
+
+private:
+    void _initDiscord();
+    void _initActivityManager();
+    void _runCallbacks();
+};
 #endif
 
-AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execrunCallbacks);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execupdateAcitivty);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execclearActivity);
-AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execinitDiscord);
 
 #ifndef NAMES_ONLY
 #undef AUTOGENERATE_NAME
