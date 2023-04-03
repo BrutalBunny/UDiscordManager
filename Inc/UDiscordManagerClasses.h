@@ -21,23 +21,25 @@ class UDISCORDMANAGER_API AUDiscordManager : public AActor
 {
 public:
     BITFIELD bInitialized : 1 GCC_PACK(INT_ALIGNMENT);
+
+    DECLARE_FUNCTION(execinitDiscord);
+    DECLARE_FUNCTION(execinitActivity);
     DECLARE_FUNCTION(execupdateAcitivty);
     DECLARE_FUNCTION(execclearActivity);
+    DECLARE_FUNCTION(execopenGuildInvite);
+    DECLARE_FUNCTION(execrunCallbacks);
+
     DECLARE_CLASS(AUDiscordManager, AActor, 0, UDiscordManager);
     AUDiscordManager();
-
-protected:
-    virtual UBOOL Tick(float DeltaTime, ELevelTick TickType) override;
-
-private:
-    void _initDiscord();
-    void _initActivityManager();
-    void _runCallbacks();
 };
 #endif
 
+AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execinitDiscord);
+AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execinitActivity);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execupdateAcitivty);
 AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execclearActivity);
+AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execopenGuildInvite);
+AUTOGENERATE_FUNCTION(AUDiscordManager, -1, execrunCallbacks);
 
 #ifndef NAMES_ONLY
 #undef AUTOGENERATE_NAME

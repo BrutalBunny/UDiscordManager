@@ -4,15 +4,43 @@ class UDiscordManager extends Actor
 
 var bool bInitialized;
 
-native function bool updateAcitivty(string details, string state, int startTime);
-native function bool clearActivity();
+native function int initDiscord();
+native function int initActivity();
+native function int updateAcitivty(string details, string state, int startTime);
+native function int clearActivity();
+native function int runCallbacks();
+native function int openGuildInvite(string guildId);
 
-function PostBeginPlay()
+simulated function PostBeginPlay()
 {
-	SetTimer(10.0, false);
+	initialize();
+	SetTimer(1.0, true);
 }
 
-function Timer()
+simulated function Timer()
 {
-	updateAcitivty("Server Name Pog", "Map Name Pog", 0);
+	if( !bInitialized ) initialize();
+	runCallbacks();
+}
+
+simulated function initialize()
+{
+	local int initDiscordResult;
+
+	initDiscordResult = initDiscord();
+	if( initDiscordResult == 0 ) initActivity();
+}
+
+simulated function Destroyed()
+{
+	Super.Destroyed();
+
+	Log("im out");
+	clearActivity();
+}
+
+defaultproperties
+{
+      bAlwaysRelevant=True
+      RemoteRole=ROLE_SimulatedProxy
 }
