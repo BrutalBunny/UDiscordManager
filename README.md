@@ -5,19 +5,17 @@ Implementation of the Discord GameSDK for UnrealTournament 99 using native C++
 
 ![example](https://github.com/BrutalBunny/UDiscordManager/blob/main/example.PNG?raw?true)
 
-
 ## Important notes
 
 * Not fully tested yet. Tested already on UT99 versions 436 and 469c
 * Not tested in all Windows enviroments 32/64 bits
 * Not tested yet in dedicated servers
+
 ## Features
 
 * Activity manager (known also as rich presence)
-## ToDo lists
+* Overlay Guild Invite
 
-* Get server and map name to be displayed
-* BT: Display user start runtime on the activity manager. Simple send it to updateActivity()
 ## Installation
 
 - You will need first to download the latest [SDK version for UT99](https://github.com/OldUnreal/UnrealTournamentPatches/releases)
@@ -33,8 +31,6 @@ Implementation of the Discord GameSDK for UnrealTournament 99 using native C++
     * C/C++ (Language): Disable "Conformance mode" and "Treat WChar_t as Built in Type"
     * Linker (General): Include Core\Lib and Engine\Lib from UT99 and \lib from Discord GameSDK
     * Linker (Input): Add the following lines "discord_game_sdk.dll.lib", "Core.lib" and "Engine.lib" as additional dependencies.  
-
- 
 
 ## Documentation
 
