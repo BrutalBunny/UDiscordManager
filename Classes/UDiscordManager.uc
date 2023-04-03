@@ -31,14 +31,6 @@ simulated function initialize()
 	if( initDiscordResult == 0 ) initActivity();
 }
 
-simulated function Destroyed()
-{
-	Super.Destroyed();
-
-	Log("im out");
-	clearActivity();
-}
-
 defaultproperties
 {
       bAlwaysRelevant=True
