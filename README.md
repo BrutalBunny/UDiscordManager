@@ -16,6 +16,10 @@ Implementation of the Discord GameSDK for UnrealTournament 99 using native C++
 * Activity manager (known also as rich presence)
 * Overlay Guild Invite
 
+## ToDo
+
+* Clear activity after leaving server
+
 ## Installation
 
 - You will need first to download the latest [SDK version for UT99](https://github.com/OldUnreal/UnrealTournamentPatches/releases)
